@@ -1,0 +1,5 @@
+name: astrbot_plugin_tts_llm
+author: clown145
+description: 将LLM的文本回复自动翻译成日语并合成为语音。支持使用自己训练的声音模型和通过指令动态注册、删除和切换不同的声音情感。
+version: 1.0.0
+repo: "https://github.com/clown145/astrbot_plugin_tts_llm"

@@ -1,0 +1,61 @@
+{
+  "send_text_with_audio": {
+    "type": "bool",
+    "description": "是否在发送语音的同时附带LLM原文",
+    "default": true
+  },
+  "default_character": {
+    "type": "string",
+    "description": "LLM自动回复时，默认使用的角色名",
+    "default": "kisaki",
+    "hint": "这个角色必须已通过 /注册情感 指令添加过"
+  },
+  "default_emotion_name": {
+    "type": "string",
+    "description": "LLM自动回复时，默认使用的情感名",
+    "default": "幸福",
+    "hint": "这个情感必须已通过 /注册情感 指令添加过"
+  },
+  "translation_api": {
+    "type": "object",
+    "description": "翻译API配置",
+    "items": {
+      "base_url": {
+        "type": "string",
+        "description": "API的Base URL",
+        "default": "https://api.openai.com/v1"
+      },
+      "api_key": {
+        "type": "string",
+        "description": "API Key"
+      },
+      "model": {
+        "type": "string",
+        "description": "用于翻译的AI模型",
+        "default": "gpt-4o-mini"
+      },
+      "api_format": {
+        "type": "string",
+        "description": "请求格式",
+        "options": [
+          "openai",
+          "gemini"
+        ],
+        "default": "openai"
+      },
+      "prompt": {
+        "type": "text",
+        "description": "给翻译模型的系统提示词",
+        "default": "请将中文文本准确、自然地翻译成日语。请保持原文的意思和语气，确保翻译结果符合日语的表达习惯。不要添加任何解释或额外内容，只返回翻译后的日语文本。"
+      }
+    }
+  },
+  "tts_servers": {
+    "type": "text",
+    "description": "TTS 服务器地址列表 (JSON格式的字符串数组)",
+    "hint": "每行一个地址, 例如 [\"https://tts-server1.com\", \"https://tts-server2.com\"]",
+    "default": "[\n  \"https://your-name-your-space.hf.space\"\n]",
+    "editor_mode": true,
+    "editor_language": "json"
+  }
+}
