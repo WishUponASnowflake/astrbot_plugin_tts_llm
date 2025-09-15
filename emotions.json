@@ -1,0 +1,64 @@
+{
+    "kisaki": {
+        "悲伤": {
+            "ref_audio_path": "reference_audio/Kisaki_1735.ogg",
+            "ref_audio_text": "あなたを手放そうとする私を、ずっとずっと恨んで構わないから。"
+        },
+        "幸福": {
+            "ref_audio_path": "reference_audio/Kisaki_1494.ogg",
+            "ref_audio_text": "誰よりも、何よりも、ルリのことを愛しています。"
+        },
+        "开心": {
+            "ref_audio_path": "reference_audio/Kisaki_802.ogg",
+            "ref_audio_text": "ほら、ホタルもとても喜んでいます。ルリもそう呼んであげてくださいね。"
+        },
+        "关心": {
+            "ref_audio_path": "reference_audio/Kisaki_670.ogg",
+            "ref_audio_text": "ルリー、大丈夫ですか?"
+        },
+        "戏谑": {
+            "ref_audio_path": "reference_audio/Kisaki_13.ogg",
+            "ref_audio_text": "あら、それは残念ですね。"
+        },
+        "严肃": {
+            "ref_audio_path": "reference_audio/Kisaki_527.ogg",
+            "ref_audio_text": "あなたがたが望むなら、私は他人になりましょう。"
+        }
+    },
+    "aoi": {
+        "平静": {
+            "ref_audio_path": "reference_audio/12b00400a02.ogg",
+            "ref_audio_text": "世界の外に電波発信してるの"
+        },
+        "悲伤": {
+            "ref_audio_path": "reference_audio/21b00180a02.ogg",
+            "ref_audio_text": "そろそろ，時間なの"
+        },
+        "开心": {
+            "ref_audio_path": "reference_audio/7300660a02.ogg",
+            "ref_audio_text": "アオイとシンイチとミユキ、行くな。"
+        }
+    },
+    "hiy": {
+        "悲伤": {
+            "ref_audio_path": "reference_audio/fem_hiy_12392.ogg",
+            "ref_audio_text": "お兄、自転車なんていいから。お兄は大丈夫？"
+        },
+        "幸福": {
+            "ref_audio_path": "reference_audio/fem_hiy_00174.ogg",
+            "ref_audio_text": "お兄、私のこと好きでしょ?大好きすぎるでしょ?ちょっと、勝ち恋性入ってるくらい好きでしょ?"
+        },
+        "开心": {
+            "ref_audio_path": "reference_audio/fem_hiy_00692.ogg",
+            "ref_audio_text": "ところでお兄、錦さんの胸を揉んだ私の手を揉む?関節もみもみする?"
+        },
+        "脆弱": {
+            "ref_audio_path": "reference_audio/fem_hiy_10094.ogg",
+            "ref_audio_text": "お兄、ごめん。今だけ甘えさせて。ちょっと弱りたい。へこたれたい。"
+        },
+        "平静": {
+            "ref_audio_path": "reference_audio/fem_hiy_10951.ogg",
+            "ref_audio_text": "どうだろうな。自分に自信がないわけではないけど、いい妹なのかは自信がないな。"
+        }
+    }
+}
