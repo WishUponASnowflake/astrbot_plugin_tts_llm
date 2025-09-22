@@ -1,5 +1,5 @@
 name: astrbot_plugin_tts_llm
 author: clown145
-description: 将LLM的文本回复自动翻译成日语并合成为语音。支持使用自己训练的声音模型和通过指令动态注册、删除和切换不同的声音情感。
+description: 一个基于Genie的tts插件(目前只能合成日语)，可以注册感情，可以使用抱脸的免费算力进行推理(较慢)。
 version: 1.0.0
 repo: "https://github.com/clown145/astrbot_plugin_tts_llm"
