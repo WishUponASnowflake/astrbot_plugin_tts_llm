@@ -12,7 +12,7 @@
   },
   "default_emotion_name": {
     "type": "string",
-    "description": "LLM自动回复时，默认使用的情感名",
+    "description": "固定感情模式下，默认使用的情感名",
     "default": "幸福",
     "hint": "这个情感必须已通过 /注册情感 指令添加过"
   },
@@ -45,17 +45,21 @@
       },
       "prompt": {
         "type": "text",
-        "description": "给翻译模型的系统提示词",
-        "default": "请将中文文本准确、自然地翻译成日语。请保持原文的意思和语气，确保翻译结果符合日语的表达习惯。不要添加任何解释或额外内容，只返回翻译后的日语文本。"
+        "description": "给翻译模型的通用系统提示词(在自动情感识别模式下会被覆盖)",
+        "default": "请将用户提供的文本准确、自然地翻译成日语。请严格遵循用户的具体指令，比如情感分析和格式要求。不要添加任何解释或额外内容，只返回翻译后的日语文本。"
+      },
+      "w_mode_prompt": {
+        "type": "text",
+        "description": "自动情感识别模式(/tts-w)下的提示词模板。必须包含 {emotion_list} 和 {text} 两个占位符。",
+        "default": "你需要执行一项复杂的翻译任务。首先，分析以下中文文本的情感，然后从给定的情感列表中选择一个最匹配的。最后，将文本自然地翻译成日语，并在翻译结果的末尾严格按照 '[情感名称]' 的格式附加上你选择的情感名称。\n\n可用的情感列表: [{emotion_list}]\n\n待处理的中文文本:\n\"\"\"\n{text}\n\"\"\"\n\n请严格遵守格式要求，不要添加任何额外的解释或说明，只输出带有情感标签的日文翻译结果。"
       }
     }
   },
   "tts_servers": {
-    "type": "text",
-    "description": "TTS 服务器地址列表 (JSON格式的字符串数组)",
-    "hint": "每行一个地址, 例如 [\"https://tts-server1.com\", \"https://tts-server2.com\"]",
-    "default": "[\n  \"https://your-name-your-space.hf.space\"\n]",
-    "editor_mode": true,
-    "editor_language": "json"
+    "type": "list",
+    "description": "TTS 服务器地址列表。可配置多个以实现故障转移。",
+    "default": [
+      "https://your-name-your-space.hf.space"
+    ]
   }
 }
