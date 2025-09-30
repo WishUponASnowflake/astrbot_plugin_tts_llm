@@ -2,6 +2,7 @@ import asyncio
 import httpx
 import json
 import os
+import re
 import uuid
 import wave
 from typing import Dict, Optional, Set
@@ -22,7 +23,7 @@ SAMPLE_RATE = 32000
     "astrbot_plugin_tts_llm",
     "clown145",
     "一个通过LLM、翻译和TTS实现语音合成的插件",
-    "1.0.0",
+    "1.1.0",
     "https://github.com/clown145/astrbot_plugin_tts_llm",
 )
 class LlmTtsPlugin(Star):
@@ -30,9 +31,10 @@ class LlmTtsPlugin(Star):
         super().__init__(context)
         self.config = config
         self.active_sessions: Set[str] = set()
+        self.w_active_sessions: Set[str] = set()
         self.session_emotions: Dict[str, Dict[str, str]] = {}
+        self.session_w_settings: Dict[str, Dict[str, str]] = {}
 
-        # 感情数据相关
         plugin_data_dir = StarTools.get_data_dir("astrbot_plugin_tts_llm")
         os.makedirs(plugin_data_dir, exist_ok=True)
         self.emotions_file_path = plugin_data_dir / "emotions.json"
@@ -114,10 +116,7 @@ class LlmTtsPlugin(Star):
             )
             return
 
-        # 执行删除
         del self.emotions_data[character_name][emotion_name]
-
-        # 如果角色下已无任何感情，则删除该角色键
         if not self.emotions_data[character_name]:
             del self.emotions_data[character_name]
 
@@ -181,9 +180,10 @@ class LlmTtsPlugin(Star):
 
     @filter.command("tts-llm", alias={"开启语音合成"})
     async def start_tts(self, event: AstrMessageEvent):
-        """为当前会话开启LLM回复语音合成"""
+        """为当前会话开启LLM回复语音合成(固定感情)"""
         session_id = event.unified_msg_origin
         self.active_sessions.add(session_id)
+        self.w_active_sessions.discard(session_id)
         default_char = self.config.get("default_character")
         default_emotion = self.config.get("default_emotion_name")
         logger.info(f"会话 [{session_id}] 的 LLM TTS 功能已开启。")
@@ -193,17 +193,38 @@ class LlmTtsPlugin(Star):
 
     @filter.command("tts-q", alias={"关闭语音合成"})
     async def stop_tts(self, event: AstrMessageEvent):
-        """为当前会话关闭LLM回复语音合成"""
+        """为当前会话关闭所有LLM回复语音合成"""
         session_id = event.unified_msg_origin
         self.active_sessions.discard(session_id)
-        logger.info(f"会话 [{session_id}] 的 LLM TTS 功能已关闭。")
-        yield event.plain_result("⏹️ 本对话的LLM语音合成已关闭。")
+        self.w_active_sessions.discard(session_id)
+        logger.info(f"会话 [{session_id}] 的所有 LLM TTS 功能已关闭。")
+        yield event.plain_result("⏹️ 本对话的所有LLM语音合成功能已关闭。")
+
+    @filter.command("tts-w", alias={"开启自动情感识别"})
+    async def start_tts_w(self, event: AstrMessageEvent):
+        """为当前会话开启LLM回复语音合成(自动情感)"""
+        session_id = event.unified_msg_origin
+        self.w_active_sessions.add(session_id)
+        self.active_sessions.discard(session_id)
+        default_char = self.config.get("default_character")
+        logger.info(f"会话 [{session_id}] 的 LLM 自动情感识别 TTS 功能已开启。")
+        yield event.plain_result(
+            f"▶️ 本对话的自动情感识别语音合成已开启。\n将使用默认角色: {default_char}"
+        )
+    
+    @filter.command("tts-w-q", alias={"关闭自动情感识别"})
+    async def stop_tts_w(self, event: AstrMessageEvent):
+        """为当前会话关闭LLM自动情感语音合成"""
+        session_id = event.unified_msg_origin
+        self.w_active_sessions.discard(session_id)
+        logger.info(f"会话 [{session_id}] 的 LLM 自动情感识别 TTS 功能已关闭。")
+        yield event.plain_result("⏹️ 本对话的自动情感识别语音合成已关闭。")
 
     @filter.command("sw", alias={"切换感情"})
     async def switch_emotion(
         self, event: AstrMessageEvent, character_name: str, emotion_name: str
     ):
-        """为当前会话切换自动合成时使用的感情"""
+        """为当前会话切换(固定感情模式)下使用的感情"""
         if self.emotions_data.get(character_name, {}).get(emotion_name):
             self.session_emotions[event.unified_msg_origin] = {
                 "character": character_name,
@@ -220,39 +241,107 @@ class LlmTtsPlugin(Star):
                 f"❌ 未找到角色 '{character_name}' 的感情 '{emotion_name}'。"
             )
 
+    @filter.command("sw-w", alias={"切换w角色"})
+    async def switch_w_character(self, event: AstrMessageEvent, character_name: str):
+        """为当前会话切换(自动情感模式)下使用的角色"""
+        if character_name in self.emotions_data:
+            self.session_w_settings[event.unified_msg_origin] = {
+                "character": character_name
+            }
+            logger.info(
+                f"会话 [{event.unified_msg_origin}] 切换自动情感识别角色至: {character_name}"
+            )
+            yield event.plain_result(
+                f"本会话自动情感识别角色已切换为: {character_name}"
+            )
+        else:
+            yield event.plain_result(f"❌ 未找到角色 '{character_name}'。")
+
     @filter.on_llm_response()
     async def intercept_llm_response_for_tts(
         self, event: AstrMessageEvent, resp: LLMResponse
     ):
         """在LLM请求完成后，捕获其文本结果并进行语音合成"""
-        if event.unified_msg_origin not in self.active_sessions:
-            return
+        session_id = event.unified_msg_origin
+        audio_path: Optional[str] = None
         original_text = resp.completion_text.strip()
         if not original_text:
             return
 
-        logger.info(
-            f"[{event.unified_msg_origin}] 捕获到LLM文本，准备语音合成: {original_text}"
-        )
-        japanese_text = await self._translate_to_japanese(original_text)
-        if not japanese_text:
-            logger.error(f"[{event.unified_msg_origin}] 翻译失败")
-            resp.result_chain.chain.append(Comp.Plain("\n(翻译失败)"))
+        if session_id in self.w_active_sessions:
+            logger.info(f"[{session_id}] 捕获到LLM文本，准备进行自动情感语音合成: {original_text}")
+            session_setting = self.session_w_settings.get(session_id)
+            char_name = session_setting["character"] if session_setting else self.config.get("default_character")
+
+            if not char_name:
+                resp.result_chain.chain.append(Comp.Plain("\n(语音合成失败: 未配置角色)"))
+                return
+
+            character_emotions = self.emotions_data.get(char_name, {})
+            if not character_emotions:
+                resp.result_chain.chain.append(Comp.Plain(f"\n(语音合成失败: 角色'{char_name}'无可用感情)"))
+                return
+            
+            api_config = self.config.get("translation_api", {})
+            w_prompt_template = api_config.get("w_mode_prompt")
+            
+            if not w_prompt_template:
+                logger.error("自动情感识别模式的提示词模板(w_mode_prompt)未在配置中找到或为空！")
+                resp.result_chain.chain.append(Comp.Plain("\n(语音合成失败: 缺少提示词配置)"))
+                return
+
+            emotion_list_str = ", ".join(character_emotions.keys())
+            augmented_prompt = w_prompt_template.format(emotion_list=emotion_list_str, text=original_text)
+            
+            japanese_text_with_emotion = await self._translate_to_japanese(augmented_prompt)
+            if not japanese_text_with_emotion:
+                resp.result_chain.chain.append(Comp.Plain("\n(翻译或情感识别失败)"))
+                return
+
+            logger.info(f"[{session_id}] 翻译及情感识别结果: {japanese_text_with_emotion}")
+            match = re.search(r'(.*)\[(.+?)\]\s*$', japanese_text_with_emotion.strip(), re.DOTALL)
+            
+            if not match:
+                resp.result_chain.chain.append(Comp.Plain("\n(语音合成失败: 无法解析情感)"))
+                return
+
+            japanese_text, emotion_name = match.group(1).strip(), match.group(2).strip()
+            emotion_data = character_emotions.get(emotion_name)
+
+            if not emotion_data:
+                resp.result_chain.chain.append(Comp.Plain(f"\n(语音合成失败: 情感'{emotion_name}'无效或不存在于'{char_name}'下)"))
+                return
+
+            logger.info(f"[{session_id}] 识别到情感 '{emotion_name}'，使用该情感合成语音。")
+            audio_path = await self._direct_synthesize_speech(
+                character_name=char_name,
+                ref_audio_path=emotion_data["ref_audio_path"],
+                ref_audio_text=emotion_data["ref_audio_text"],
+                text=japanese_text,
+                session_id_for_log=session_id,
+            )
+
+        elif session_id in self.active_sessions:
+            logger.info(f"[{session_id}] 捕获到LLM文本，准备语音合成: {original_text}")
+            japanese_text = await self._translate_to_japanese(original_text)
+            if not japanese_text:
+                resp.result_chain.chain.append(Comp.Plain("\n(翻译失败)"))
+                return
+
+            logger.info(f"[{session_id}] 翻译结果: {japanese_text}")
+            audio_path = await self._synthesize_speech_from_context(japanese_text, session_id)
+        
+        else:
             return
 
-        logger.info(f"[{event.unified_msg_origin}] 翻译结果: {japanese_text}")
-        audio_path = await self._synthesize_speech_from_context(
-            japanese_text, event.unified_msg_origin
-        )
-        if not audio_path:
-            logger.error(f"[{event.unified_msg_origin}] 语音合成失败")
+        if audio_path:
+            logger.info(f"[{session_id}] 语音合成成功: {audio_path}")
+            resp.result_chain.chain = [Comp.Record(file=audio_path)]
+            if self.config.get("send_text_with_audio", False):
+                resp.result_chain.chain.append(Comp.Plain(f"{original_text}"))
+        else:
+            logger.error(f"[{session_id}] 语音合成失败")
             resp.result_chain.chain.append(Comp.Plain("\n(语音合成失败)"))
-            return
-
-        logger.info(f"[{event.unified_msg_origin}] 语音合成成功: {audio_path}")
-        resp.result_chain.chain = [Comp.Record(file=audio_path)]
-        if self.config.get("send_text_with_audio", False):
-            resp.result_chain.chain.append(Comp.Plain(f"{original_text}"))
 
     async def _translate_to_japanese(self, text: str) -> Optional[str]:
         api_config = self.config.get("translation_api", {})
@@ -263,9 +352,12 @@ class LlmTtsPlugin(Star):
             api_config.get("model", "gpt-3.5-turbo"),
             api_config.get("api_format", "openai"),
         )
-        if not all([base_url, api_key, prompt]):
-            logger.error("翻译API配置不完整。")
+        if not all([base_url, api_key]):
+            logger.error("翻译API配置不完整 (base_url, api_key)。")
             return None
+            
+        system_prompt = prompt if prompt else "You are a translation assistant."
+        
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -275,7 +367,7 @@ class LlmTtsPlugin(Star):
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": prompt},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text},
                 ],
             }
@@ -283,7 +375,7 @@ class LlmTtsPlugin(Star):
         elif api_format == "gemini":
             payload = {
                 "contents": [{"parts": [{"text": text}]}],
-                "systemInstruction": {"parts": [{"text": prompt}]}
+                "systemInstruction": {"parts": [{"text": system_prompt}]}
             }
             endpoint_url = f"{base_url.strip('/')}/v1beta/models/{model}:generateContent?key={api_key}"
             headers.pop("Authorization", None)
@@ -387,21 +479,18 @@ class LlmTtsPlugin(Star):
         text: str,
         session_id_for_log: str,
     ) -> Optional[str]:
-        try:
-            servers = json.loads(self.config.get("tts_servers", "[]"))
-        except json.JSONDecodeError:
-            logger.error(f"[{session_id_for_log}] TTS服务器配置错误。")
-            return None
+        servers = self.config.get("tts_servers", [])
         if not servers:
             logger.error(f"[{session_id_for_log}] 未配置TTS服务器。")
             return None
 
         start_index = self.tts_server_index
-        self.tts_server_index = (self.tts_server_index + 1) % len(servers)
-
         for i in range(len(servers)):
             current_index = (start_index + i) % len(servers)
             server_url = servers[current_index].strip("/")
+            
+            if i == 0:
+                self.tts_server_index = (start_index + 1) % len(servers)
 
             audio_path = await self._attempt_synthesis_on_server(
                 server_url=server_url,
